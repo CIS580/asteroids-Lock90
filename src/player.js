@@ -1,6 +1,10 @@
 "use strict";
 
 const MS_PER_FRAME = 1000/8;
+const MAX_VELOCITY = 3;
+
+/* Classes */
+const Shot = require('./shot.js');
 
 /**
  * @module exports the Player class
@@ -11,8 +15,10 @@ module.exports = exports = Player;
  * @constructor Player
  * Creates a new player object
  * @param {Postition} position object specifying an x and y
+ * @param {canvasDOMElement} canvas world size
+ * @param {object} entityManager all entities maintainer
  */
-function Player(position, canvas) {
+function Player(position, canvas, entityManager) {
   this.worldWidth = canvas.width;
   this.worldHeight = canvas.height;
   this.state = "idle";
@@ -27,8 +33,11 @@ function Player(position, canvas) {
   this.angle = 0;
   this.radius  = 64;
   this.thrusting = false;
+  this.shoot = false;
   this.steerLeft = false;
   this.steerRight = false;
+  this.timer = 0;
+  this.entityManager = entityManager;
 
   var self = this;
   window.onkeydown = function(event) {
@@ -44,6 +53,9 @@ function Player(position, canvas) {
       case 'ArrowRight': // right
       case 'd':
         self.steerRight = true;
+        break;
+      case ' ': // shoot
+        self.shoot = true;
         break;
     }
   }
@@ -62,20 +74,28 @@ function Player(position, canvas) {
       case 'd':
         self.steerRight = false;
         break;
+      case ' ': // shoot
+        self.shoot = false;
+        break;
     }
   }
 }
 
-
-
 /**
- * @function updates the player object
+ * @function update updates the player object
  * {DOMHighResTimeStamp} time the elapsed time since the last frame
  */
 Player.prototype.update = function(time) {
+
+  this.timer += time;
+  if(this.shoot && this.timer > MS_PER_FRAME) {
+    this.timer = 0;
+    this.entityManager.addShot(new Shot(this.position, this.angle));
+  }
+
   // Apply angular velocity
   if(this.steerLeft) {
-    this.angle += time * 0.005;
+    this.angle += 0.1;
   }
   if(this.steerRight) {
     this.angle -= 0.1;
@@ -88,6 +108,12 @@ Player.prototype.update = function(time) {
     }
     this.velocity.x -= acceleration.x;
     this.velocity.y -= acceleration.y;
+
+    if(this.velocity.x > MAX_VELOCITY) this.velocity.x = MAX_VELOCITY;
+    else if(this.velocity.x < -1 * MAX_VELOCITY) this.velocity.x = -1 * MAX_VELOCITY;
+
+    if(this.velocity.y > MAX_VELOCITY) this.velocity.y = MAX_VELOCITY;
+    else if(this.velocity.y < -1 * MAX_VELOCITY) this.velocity.y = -1 * MAX_VELOCITY;
   }
   // Apply velocity
   this.position.x += this.velocity.x;
